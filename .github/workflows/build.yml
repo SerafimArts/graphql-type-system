@@ -1,4 +1,4 @@
-name: Testing
+name: build
 
 on: [pull_request, push]
 
@@ -9,49 +9,39 @@ jobs:
       matrix:
         # 1) All allowed OS
         os: [ubuntu, windows, macOS]
-
-        # 2) All allowed PHP versions greater than 7.4
-        php: [7.4]
-
+        # 2) All allowed PHP versions greater than 7.1
+        php: [7.1, 7.2, 7.3, 7.4]
         # 3) Lowest and highest dependency versions
         prefer: ['lowest', 'highest']
-
     name: ${{ matrix.os }} / PHP ${{ matrix.php }} / ${{ matrix.prefer }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
+    - name: Checkout
+      uses: actions/checkout@master
 
-      - name: PHP Installtion
-        uses: shivammathur/setup-php@master
-        with:
-          php-version: ${{ matrix.php }}
-          extension-csv: mbstring, dom, xsl, openssl, fileinfo
+    - name: PHP Installtion
+      uses: shivammathur/setup-php@master
+      with:
+        php-version: ${{ matrix.php }}
+        extension-csv: mbstring, dom, xsl, openssl, fileinfo
 
-      - name: Composer Installation (Prefer Lowest)
-        if: matrix.prefer == 'lowest'
-        run: composer update --no-interaction --prefer-dist --no-suggest --prefer-lowest
+    - name: Composer Installation (Prefer Lowest)
+      if: matrix.prefer == 'lowest'
+      run: composer update --no-interaction --prefer-dist --no-suggest --prefer-lowest
 
-      - name: Composer Installation (Prefer Highest)
-        if: matrix.prefer == 'highest'
-        run: composer update --no-interaction --prefer-dist --no-suggest
+    - name: Composer Installation (Prefer Highest)
+      if: matrix.prefer == 'highest'
+      run: composer update --no-interaction --prefer-dist --no-suggest
 
-      - name: phpunit
-        run: composer run phpunit
+    - name: Static Analysis
+      run: composer run psalm
 
-      - name: behat
-        run: composer run behat
+    - name: Unit Testing
+      run: composer run phpunit
 
-      #
-      # Only on Linux environment
-      #
-      - name: psalm
-        if: matrix.os == 'ubuntu'
-        run: composer run psalm
+    - name: Codestyle Check
+      if: matrix.os != 'windows'
+      run: composer run phpcs
 
-      - name: security
-        if: matrix.os == 'ubuntu'
-        run: composer run security
-
-      - name: phpcs
-        if: matrix.os == 'ubuntu'
-        run: composer run phpcs
+    - name: Security Check
+      if: matrix.os != 'windows'
+      run: composer run security
